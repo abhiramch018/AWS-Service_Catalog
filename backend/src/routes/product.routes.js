@@ -1,10 +1,11 @@
 const express = require('express');
 const productController = require('../controllers/product.controller');
+const { requireAuth } = require('../middleware/requireAuth');
 
 const router = express.Router();
 
-router.get('/', productController.list);
-router.post('/', productController.create);
-router.get('/:id', productController.getById);
+router.get('/', requireAuth, productController.list);
+router.post('/', requireAuth, productController.create);
+router.get('/:id', requireAuth, productController.getById);
 
 module.exports = router;

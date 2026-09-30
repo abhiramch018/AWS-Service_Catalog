@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const User = require('../models/User');
 const { portalMode } = require('../config/aws');
+const { hashToken } = require('../middleware/requireAuth');
 
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
@@ -29,10 +30,13 @@ function publicUser(user) {
   };
 }
 
-function sessionFor(user) {
+async function issueSession(user) {
+  const token = crypto.randomBytes(24).toString('hex');
+  user.sessionTokenHash = hashToken(token);
+  await user.save();
   return {
     mode: portalMode(),
-    token: crypto.randomBytes(24).toString('hex'),
+    token,
     user: publicUser(user),
   };
 }
@@ -64,7 +68,7 @@ async function register({ name, email, password }) {
     role: 'Service Catalog End User',
   });
 
-  return sessionFor(user);
+  return issueSession(user);
 }
 
 async function login({ email, password }) {
@@ -80,7 +84,7 @@ async function login({ email, password }) {
     throw error;
   }
 
-  return sessionFor(user);
+  return issueSession(user);
 }
 
 module.exports = { register, login };

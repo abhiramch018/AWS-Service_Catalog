@@ -25,4 +25,19 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const url = error.config?.url || '';
+    const isLogin = url.includes('/api/auth/login') || url.includes('/api/auth/register');
+    if (error.response?.status === 401 && !isLogin) {
+      sessionStorage.removeItem('portal.session');
+      if (window.location.pathname !== '/login') {
+        window.location.assign('/login');
+      }
+    }
+    return Promise.reject(error);
+  },
+);
+
 export default api;

@@ -13,8 +13,25 @@ const provisionRoutes = require('./routes/provision.routes');
 const app = express();
 const PORT = process.env.PORT || 5000;
 const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
+const LOCAL_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173'];
 
-app.use(cors({ origin: CORS_ORIGIN }));
+function isAllowedOrigin(origin) {
+  if (!origin) {
+    return true;
+  }
+  if (origin === CORS_ORIGIN) {
+    return true;
+  }
+  return LOCAL_ORIGINS.includes(CORS_ORIGIN) && LOCAL_ORIGINS.includes(origin);
+}
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      callback(null, isAllowedOrigin(origin));
+    },
+  }),
+);
 app.use(express.json());
 
 app.get('/api/health', (req, res) => {
@@ -40,8 +57,8 @@ app.use((req, res) => {
 
 async function start() {
   await connectDb();
-  app.listen(PORT, () => {
-    console.log(`API listening on http://localhost:${PORT} (${portalMode()} mode, MongoDB connected)`);
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`API listening on port ${PORT} (${portalMode()} mode, MongoDB connected)`);
   });
 }
 
