@@ -20,6 +20,7 @@ import { ArrowBack } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import { ENVIRONMENTS, INITIAL_PROVISION_FORM } from '../data/provisionOptions';
 import { fetchProduct } from '../services/catalogService';
+import { fetchSubnets, fetchVpcs } from '../services/networkService';
 import { submitProvisionRequest } from '../services/provisionService';
 
 function SummaryRow({ label, value }) {
@@ -41,6 +42,10 @@ export default function ProvisionProductPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [form, setForm] = useState(INITIAL_PROVISION_FORM);
+  const [vpcs, setVpcs] = useState([]);
+  const [vpcState, setVpcState] = useState('loading');
+  const [subnets, setSubnets] = useState([]);
+  const [subnetState, setSubnetState] = useState('idle');
   const [reviewing, setReviewing] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -75,6 +80,66 @@ export default function ProvisionProductPage() {
     };
   }, [productId]);
 
+  useEffect(() => {
+    let active = true;
+
+    async function loadNetworks() {
+      setVpcState('loading');
+      try {
+        const data = await fetchVpcs();
+        if (!active) {
+          return;
+        }
+        setVpcs(data.vpcs || []);
+        setForm((current) => ({ ...current, region: data.region || current.region }));
+        setVpcState((data.vpcs || []).length ? 'ready' : 'empty');
+      } catch {
+        if (active) {
+          setVpcs([]);
+          setVpcState('error');
+        }
+      }
+    }
+
+    loadNetworks();
+    return () => {
+      active = false;
+    };
+  }, [productId]);
+
+  useEffect(() => {
+    if (!form.vpc) {
+      setSubnets([]);
+      setSubnetState('idle');
+      return undefined;
+    }
+
+    let active = true;
+    setSubnetState('loading');
+    setSubnets([]);
+
+    async function loadSubnets() {
+      try {
+        const data = await fetchSubnets(form.vpc);
+        if (!active) {
+          return;
+        }
+        setSubnets(data.subnets || []);
+        setSubnetState((data.subnets || []).length ? 'ready' : 'empty');
+      } catch {
+        if (active) {
+          setSubnets([]);
+          setSubnetState('error');
+        }
+      }
+    }
+
+    loadSubnets();
+    return () => {
+      active = false;
+    };
+  }, [form.vpc]);
+
   function reviewConfiguration() {
     if (!form.instanceType.trim() || !form.region.trim() || !form.subnet.trim() || !form.vpc.trim()) {
       setSubmitError('Instance type, region, subnet, and VPC are required.');
@@ -86,7 +151,12 @@ export default function ProvisionProductPage() {
 
   function updateField(field) {
     return (event) => {
-      setForm((current) => ({ ...current, [field]: event.target.value }));
+      const value = event.target.value;
+      setForm((current) => ({
+        ...current,
+        [field]: value,
+        ...(field === 'vpc' ? { subnet: '' } : {}),
+      }));
       setReviewing(false);
     };
   }
@@ -124,13 +194,15 @@ export default function ProvisionProductPage() {
     return <Alert severity="error">{loadError}</Alert>;
   }
 
+  const vpcLabel = vpcs.find((vpc) => vpc.id === form.vpc)?.label || form.vpc;
+  const subnetLabel = subnets.find((subnet) => subnet.id === form.subnet)?.label || form.subnet;
   const summary = [
     ['Product', product.name],
     ['Environment', form.environment],
     ['Instance type', form.instanceType],
     ['Region', form.region],
-    ['Subnet', form.subnet],
-    ['VPC', form.vpc],
+    ['VPC', vpcLabel],
+    ['Subnet', subnetLabel],
   ];
 
   return (
@@ -162,9 +234,63 @@ export default function ProvisionProductPage() {
               ))}
             </TextField>
             <TextField label="Instance type" value={form.instanceType} onChange={updateField('instanceType')} required fullWidth />
-            <TextField label="Region" value={form.region} onChange={updateField('region')} required fullWidth />
-            <TextField label="Subnet" value={form.subnet} onChange={updateField('subnet')} required fullWidth />
-            <TextField label="VPC" value={form.vpc} onChange={updateField('vpc')} required fullWidth />
+            <TextField label="Region" value={form.region} fullWidth slotProps={{ input: { readOnly: true } }} />
+            <TextField
+              select
+              label="VPC"
+              value={form.vpc}
+              onChange={updateField('vpc')}
+              disabled={vpcState !== 'ready'}
+              required
+              fullWidth
+              helperText={
+                vpcState === 'loading'
+                  ? 'Loading VPCs…'
+                  : vpcState === 'empty'
+                    ? 'No VPCs found.'
+                    : vpcState === 'error'
+                      ? 'Failed to load VPCs.'
+                      : ' '
+              }
+            >
+              <MenuItem value="" disabled>
+                Select VPC
+              </MenuItem>
+              {vpcs.map((vpc) => (
+                <MenuItem key={vpc.id} value={vpc.id}>
+                  {vpc.label}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              label="Subnet"
+              value={form.subnet}
+              onChange={updateField('subnet')}
+              disabled={!form.vpc || subnetState !== 'ready'}
+              required
+              fullWidth
+              helperText={
+                !form.vpc
+                  ? 'Select a VPC first.'
+                  : subnetState === 'loading'
+                    ? 'Loading subnets…'
+                    : subnetState === 'empty'
+                      ? 'No subnets found.'
+                      : subnetState === 'error'
+                        ? 'Failed to load subnets.'
+                        : ' '
+              }
+            >
+              <MenuItem value="" disabled>
+                Select Subnet
+              </MenuItem>
+              {subnets.map((subnet) => (
+                <MenuItem key={subnet.id} value={subnet.id}>
+                  {subnet.label}
+                </MenuItem>
+              ))}
+            </TextField>
 
             {reviewing && (
               <Box>

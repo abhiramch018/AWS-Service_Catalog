@@ -1,5 +1,6 @@
 const productService = require('./product.service');
 const catalogAws = require('./catalogAws.service');
+const networkService = require('./network.service');
 const { portalMode } = require('../config/aws');
 const ProvisionRequest = require('../models/ProvisionRequest');
 
@@ -98,6 +99,7 @@ async function create(input = {}) {
   const region = requiredText(input.region, 'Region');
   const subnet = requiredText(input.subnet, 'Subnet');
   const vpc = requiredText(input.vpc, 'VPC');
+  await networkService.assertSelection({ region, vpc, subnet });
   const awsMode = portalMode() === 'aws';
   let provisionedProductId = '';
   let provisionedProductName = '';
