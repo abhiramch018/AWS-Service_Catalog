@@ -1,10 +1,9 @@
 const productService = require('./product.service');
 const catalogAws = require('./catalogAws.service');
 const networkService = require('./network.service');
+const { profileFor } = require('./productProfiles');
 const { portalMode } = require('../config/aws');
 const ProvisionRequest = require('../models/ProvisionRequest');
-
-const ENVIRONMENTS = ['Development', 'Test', 'Production'];
 
 const REQUESTED_MS = 4000;
 const PROVISIONING_MS = 6000;
@@ -79,6 +78,58 @@ async function withAwsStatus(document) {
   return request;
 }
 
+function httpError(message, status) {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+}
+
+async function normalizeRequest(product, input = {}) {
+  const profile = profileFor(product);
+  if (!profile) {
+    throw httpError('This product cannot be provisioned from the portal.', 400);
+  }
+
+  const environment = requiredText(input.environment, 'Environment');
+  if (!profile.environments.includes(environment)) {
+    throw httpError(
+      profile.key === 's3'
+        ? 'Select Development, Testing, or Production.'
+        : 'Select Development, Test, or Production.',
+      400,
+    );
+  }
+
+  const selection = {
+    environment,
+    instanceType: '',
+    region: '',
+    subnet: '',
+    vpc: '',
+  };
+
+  if (profile.fields.includes('instanceType')) {
+    selection.instanceType = requiredText(input.instanceType, 'Instance type');
+    if (!profile.instanceTypes.includes(selection.instanceType)) {
+      throw httpError('Instance type must be t3.micro or t2.micro.', 400);
+    }
+  }
+  if (profile.fields.includes('region')) {
+    selection.region = requiredText(input.region, 'Region');
+  }
+  if (profile.fields.includes('vpc')) {
+    selection.vpc = requiredText(input.vpc, 'VPC');
+  }
+  if (profile.fields.includes('subnet')) {
+    selection.subnet = requiredText(input.subnet, 'Subnet');
+  }
+  if (profile.fields.includes('vpc')) {
+    await networkService.assertSelection(selection);
+  }
+
+  return selection;
+}
+
 async function create(input = {}) {
   const product = await productService.getById(input.productId);
   if (!product) {
@@ -87,19 +138,8 @@ async function create(input = {}) {
     throw error;
   }
 
-  const environment = requiredText(input.environment, 'Environment');
-  if (!ENVIRONMENTS.includes(environment)) {
-    const error = new Error('Select Development, Test, or Production.');
-    error.status = 400;
-    throw error;
-  }
-
   const requestId = await nextRequestId();
-  const instanceType = requiredText(input.instanceType, 'Instance type');
-  const region = requiredText(input.region, 'Region');
-  const subnet = requiredText(input.subnet, 'Subnet');
-  const vpc = requiredText(input.vpc, 'VPC');
-  await networkService.assertSelection({ region, vpc, subnet });
+  const { environment, instanceType, region, subnet, vpc } = await normalizeRequest(product, input);
   const awsMode = portalMode() === 'aws';
   let provisionedProductId = '';
   let provisionedProductName = '';
@@ -158,4 +198,4 @@ async function getById(requestId) {
   return withDemoStatus(record);
 }
 
-module.exports = { create, list, getById };
+module.exports = { create, list, getById, normalizeRequest };
