@@ -14,11 +14,9 @@ import {
 import { CloudQueueOutlined, Visibility, VisibilityOff } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 
-export default function LoginPage() {
-  const { isAuthenticated, user, login, register } = useAuth();
+export default function AdminLoginPage() {
+  const { isAuthenticated, user, adminLogin } = useAuth();
   const navigate = useNavigate();
-  const [creatingAccount, setCreatingAccount] = useState(false);
-  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -35,12 +33,8 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      if (creatingAccount) {
-        await register(name, email, password);
-      } else {
-        await login(email, password);
-      }
-      navigate('/dashboard', { replace: true });
+      await adminLogin(email, password);
+      navigate('/admin/dashboard', { replace: true });
     } catch (requestError) {
       const message = requestError.response?.data?.message;
       setError(message || 'The API is not reachable. Start the backend, then try again.');
@@ -70,11 +64,10 @@ export default function LoginPage() {
         </Stack>
         <Box>
           <Typography variant="h3" component="p" sx={{ fontWeight: 600, maxWidth: 460 }}>
-            Self-service provisioning for approved infrastructure
+            Administration for approved infrastructure
           </Typography>
           <Typography sx={{ mt: 2, maxWidth: 460, opacity: 0.9 }}>
-            Review approved products and request provisioning through a controlled
-            internal portal.
+            Review which portal users have requested provisioning.
           </Typography>
         </Box>
         <Typography variant="body2" sx={{ opacity: 0.85 }}>
@@ -101,27 +94,13 @@ export default function LoginPage() {
             </Stack>
             <Box>
               <Typography variant="h4" component="h1">
-                {creatingAccount ? 'Create account' : 'Sign in'}
+                Admin sign in
               </Typography>
               <Typography color="text.secondary" sx={{ mt: 1 }}>
-                Portal accounts are stored in the application database. AWS credentials are not used.
+                Administrator access is checked by the portal server.
               </Typography>
             </Box>
-            <Alert severity="info">
-              Approved products are requested through the portal server. AWS credentials are not entered here.
-            </Alert>
             {error && <Alert severity="error">{error}</Alert>}
-            {creatingAccount && (
-              <TextField
-                label="Name"
-                name="name"
-                autoComplete="name"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                required
-                fullWidth
-              />
-            )}
             <TextField
               label="Email"
               type="email"
@@ -158,16 +137,10 @@ export default function LoginPage() {
               }}
             />
             <Button type="submit" variant="contained" size="large" disabled={loading}>
-              {loading ? <CircularProgress size={22} color="inherit" /> : creatingAccount ? 'Create account' : 'Sign in'}
+              {loading ? <CircularProgress size={22} color="inherit" /> : 'Sign in'}
             </Button>
-            <Button
-              type="button"
-              onClick={() => {
-                setCreatingAccount((current) => !current);
-                setError('');
-              }}
-            >
-              {creatingAccount ? 'Already have an account? Sign in' : 'Create an account'}
+            <Button type="button" onClick={() => navigate('/login')}>
+              User sign in
             </Button>
           </Stack>
         </Box>

@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
+import { adminLoginRequest } from '../services/adminService';
 import {
   clearSession,
   loginRequest,
@@ -43,6 +44,16 @@ export function AuthProvider({ children }) {
       isAuthenticated: Boolean(session?.user),
       async login(email, password) {
         const result = await loginRequest(email, password);
+        const nextSession = {
+          user: result.user,
+          token: result.token,
+          mode: result.mode,
+        };
+        saveSession(nextSession);
+        setSession(nextSession);
+      },
+      async adminLogin(email, password) {
+        const result = await adminLoginRequest(email, password);
         const nextSession = {
           user: result.user,
           token: result.token,
