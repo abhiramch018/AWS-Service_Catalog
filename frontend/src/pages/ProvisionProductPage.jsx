@@ -17,7 +17,6 @@ import {
   Typography,
 } from '@mui/material';
 import { ArrowBack } from '@mui/icons-material';
-import { useAuth } from '../context/AuthContext';
 import {
   INITIAL_PROVISION_FORM,
   REGION_CODE,
@@ -42,7 +41,6 @@ function SummaryRow({ label, value }) {
 export default function ProvisionProductPage() {
   const { productId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -182,7 +180,6 @@ export default function ProvisionProductPage() {
     const payload = {
       productId: product.id,
       environment: form.environment,
-      requestedBy: user?.name || 'Portal user',
     };
     if (fields.includes('instanceType')) {
       payload.instanceType = form.instanceType;

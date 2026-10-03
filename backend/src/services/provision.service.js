@@ -23,7 +23,7 @@ function toRequest(document) {
     return null;
   }
 
-  const { _id, ...request } = document;
+  const { _id, userId, ...request } = document;
   if (request.requestedAt instanceof Date) {
     request.requestedAt = request.requestedAt.toISOString();
   }
@@ -130,7 +130,11 @@ async function normalizeRequest(product, input = {}) {
   return selection;
 }
 
-async function create(input = {}) {
+async function create(input = {}, actor = {}) {
+  if (!actor.id) {
+    throw httpError('Authentication is required.', 401);
+  }
+
   const product = await productService.getById(input.productId);
   if (!product) {
     const error = new Error('Product not found.');
@@ -171,7 +175,8 @@ async function create(input = {}) {
     region,
     subnet,
     vpc,
-    requestedBy: String(input.requestedBy || 'Portal user').slice(0, 80),
+    userId: String(actor.id),
+    requestedBy: String(actor.name || 'Portal user').slice(0, 80),
     requestedAt: new Date(),
     message,
     provisionedProductId,
@@ -181,8 +186,8 @@ async function create(input = {}) {
   return toRequest(record.toObject());
 }
 
-async function list() {
-  const records = await ProvisionRequest.find().sort({ requestedAt: -1 });
+async function list(userId) {
+  const records = await ProvisionRequest.find({ userId: String(userId || '') }).sort({ requestedAt: -1 });
   return Promise.all(
     records.map((record) =>
       record.mode === 'aws' ? withAwsStatus(record.toObject()) : withDemoStatus(record.toObject()),
@@ -190,8 +195,8 @@ async function list() {
   );
 }
 
-async function getById(requestId) {
-  const record = await ProvisionRequest.findOne({ requestId }).lean();
+async function getById(requestId, userId) {
+  const record = await ProvisionRequest.findOne({ requestId, userId: String(userId || '') }).lean();
   if (record?.mode === 'aws') {
     return withAwsStatus(record);
   }
