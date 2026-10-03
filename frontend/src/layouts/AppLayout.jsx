@@ -35,12 +35,16 @@ import { useAuth } from '../context/AuthContext';
 const EXPANDED_WIDTH = 256;
 const COLLAPSED_WIDTH = 76;
 
-const NAV_ITEMS = [
+const USER_NAV_ITEMS = [
   { label: 'Dashboard', path: '/dashboard', icon: DashboardOutlined },
   { label: 'Products', path: '/products', icon: Inventory2Outlined },
   { label: 'Provisioning', path: '/provisioning', icon: CloudQueueOutlined },
   { label: 'Provisioning History', path: '/history', icon: HistoryOutlined },
   { label: 'Settings', path: '/settings', icon: SettingsOutlined },
+];
+
+const ADMIN_NAV_ITEMS = [
+  { label: 'Admin Dashboard', path: '/admin/dashboard', icon: DashboardOutlined },
 ];
 
 function initials(name = '') {
@@ -61,7 +65,11 @@ function isSelected(pathname, path) {
   return pathname === path || pathname.startsWith(`${path}/`);
 }
 
-function crumbsFor(pathname) {
+function crumbsFor(pathname, navItems) {
+  if (pathname.startsWith('/admin')) {
+    return [{ label: 'Admin Dashboard' }];
+  }
+
   if (pathname.startsWith('/products/') && pathname !== '/products') {
     return [
       { label: 'Dashboard', to: '/dashboard' },
@@ -85,7 +93,7 @@ function crumbsFor(pathname) {
     ];
   }
 
-  const current = NAV_ITEMS.find((item) => item.path === pathname);
+  const current = navItems.find((item) => item.path === pathname);
   if (!current || current.path === '/dashboard') {
     return [{ label: 'Dashboard' }];
   }
@@ -101,12 +109,13 @@ export default function AppLayout() {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const location = useLocation();
   const { user, logout, mode } = useAuth();
+  const navItems = user?.role === 'Admin' ? ADMIN_NAV_ITEMS : USER_NAV_ITEMS;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState(null);
 
   const desktopWidth = collapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH;
-  const crumbs = crumbsFor(location.pathname);
+  const crumbs = crumbsFor(location.pathname, navItems);
 
   function handleMenuToggle() {
     if (isMobile) {
@@ -132,7 +141,7 @@ export default function AppLayout() {
       </Toolbar>
       <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
       <List component="nav" aria-label="Main" sx={{ px: 1, py: 1.5, flexGrow: 1 }}>
-        {NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const Icon = item.icon;
           const selected = isSelected(location.pathname, item.path);
           const button = (

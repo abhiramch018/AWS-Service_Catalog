@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
+import AdminRoute from './components/AdminRoute';
 import ProtectedRoute from './components/ProtectedRoute';
 import AppLayout from './layouts/AppLayout';
 import DashboardPage from './pages/DashboardPage';
@@ -10,11 +11,19 @@ import SettingsPage from './pages/SettingsPage';
 import ProvisioningHistoryPage from './pages/ProvisioningHistoryPage';
 import ProvisioningStatusPage from './pages/ProvisioningStatusPage';
 import ProvisionProductPage from './pages/ProvisionProductPage';
+import AdminLoginPage from './pages/AdminLoginPage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
 
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/admin/login" element={<AdminLoginPage />} />
+      <Route element={<AdminRoute />}>
+        <Route element={<AppLayout />}>
+          <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+        </Route>
+      </Route>
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
