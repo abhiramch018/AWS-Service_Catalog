@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const productService = require('./product.service');
 const catalogAws = require('./catalogAws.service');
 const networkService = require('./network.service');
@@ -151,7 +152,7 @@ async function create(input = {}, actor = {}) {
   let message = 'Demo Mode — AWS resources are not being created.';
 
   if (awsMode) {
-    provisionedProductName = `portal-${requestId}`.toLowerCase();
+    provisionedProductName = `portal-${requestId}-${crypto.randomBytes(3).toString('hex')}`.toLowerCase();
     const recordDetail = await catalogAws.provisionProduct(product.id, provisionedProductName, {
       environment,
       instanceType,
