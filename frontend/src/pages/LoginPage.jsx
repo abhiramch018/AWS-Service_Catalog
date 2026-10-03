@@ -169,6 +169,11 @@ export default function LoginPage() {
             >
               {creatingAccount ? 'Already have an account? Sign in' : 'Create an account'}
             </Button>
+            {!creatingAccount && (
+              <Button type="button" onClick={() => navigate('/admin/login')}>
+                Admin sign in
+              </Button>
+            )}
           </Stack>
         </Box>
       </Box>
