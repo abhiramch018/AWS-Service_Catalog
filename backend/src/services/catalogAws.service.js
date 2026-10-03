@@ -8,6 +8,7 @@ const {
 } = require('@aws-sdk/client-service-catalog');
 const crypto = require('crypto');
 const { awsError, catalogClient } = require('../config/aws');
+const { catalogEnvironment, environmentError, profileFor } = require('./productProfiles');
 
 const FORM_VALUES = {
   instancetype: 'instanceType',
@@ -17,12 +18,6 @@ const FORM_VALUES = {
   vpc: 'vpc',
   vpcid: 'vpc',
   region: 'region',
-};
-
-const ENVIRONMENT_VALUES = {
-  development: 'development',
-  test: 'staging',
-  staging: 'staging',
 };
 
 function toCatalogProduct(summary, artifact) {
@@ -93,7 +88,7 @@ async function getProduct(productId) {
   }
 }
 
-async function provisioningParameters(productId, artifactId, pathId, input) {
+async function provisioningParameters(productId, artifactId, pathId, input, profile) {
   const described = await catalogClient().send(
     new DescribeProvisioningParametersCommand({
       ProductId: productId,
@@ -106,9 +101,9 @@ async function provisioningParameters(productId, artifactId, pathId, input) {
     const field = FORM_VALUES[String(parameter.ParameterKey || '').toLowerCase()];
     let value = field ? String(input[field] || '').trim() : '';
     if (parameter.ParameterKey === 'Environment') {
-      value = ENVIRONMENT_VALUES[value.toLowerCase()] || '';
+      value = catalogEnvironment(profile, input.environment);
       if (!value) {
-        const error = new Error('Choose Development or Test. This product does not accept Production.');
+        const error = new Error(environmentError(profile));
         error.status = 400;
         throw error;
       }
@@ -143,6 +138,7 @@ async function provisionProduct(productId, provisionedProductName, input) {
       throw error;
     }
 
+    const profile = profileFor({ id: productId, name: target.summary?.Name });
     let parameters = [];
     try {
       parameters = await provisioningParameters(
@@ -150,13 +146,14 @@ async function provisionProduct(productId, provisionedProductName, input) {
         target.artifact.Id,
         target.pathId,
         input,
+        profile,
       );
     } catch (error) {
       if (error.status === 400) {
         throw error;
       }
       const wrapped = new Error(
-        'Service Catalog could not read the product parameters. Confirm Development EC2 has a launch constraint that uses ServiceCatalogLaunchRole.',
+        'Service Catalog could not read the product parameters. Confirm the product has a launch constraint that uses ServiceCatalogLaunchRole.',
       );
       wrapped.status = 502;
       throw wrapped;

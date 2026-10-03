@@ -2,7 +2,9 @@
 
 A B.Tech project portal for viewing approved infrastructure products and requesting provisioning through AWS Service Catalog.
 
-This repository is in **Phase 5: provisioning status and history**. The app runs in **demo mode**. It does not call AWS and does not create cloud resources.
+The app can run in two modes. `DEMO_MODE=true` stores requests in MongoDB and does not call AWS. `DEMO_MODE=false` uses the AWS SDK default credential chain: local environment keys for development, or an EC2 instance IAM role in production. The React app never receives AWS credentials.
+
+Production deployment steps are in [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Architecture
 
@@ -20,7 +22,7 @@ CloudFormation
 AWS resources
 ```
 
-The frontend never talks to AWS and never holds AWS credentials. It calls only this backend. Products and provisioning requests are read from MongoDB. Demo mode still does not call AWS. A later phase can add the AWS SDK in the service layer without changing the React app.
+The frontend never talks to AWS and never holds AWS credentials. It calls only this backend. In AWS mode the backend lists Service Catalog products and provisions them. VPC and subnet choices come from `GET /api/aws/vpcs` and `GET /api/aws/subnets`.
 
 ```
 Frontend
@@ -65,7 +67,7 @@ IAM stays on the AWS side. The React app is not an IAM administration portal.
 | 3 | Product catalog and product details | Done |
 | 4 | Provisioning form and provision API | Done |
 | 5 | Provisioning status and history | Done |
-| 6 | AWS Service Catalog integration | Not started |
+| 6 | AWS Service Catalog integration | Done when `DEMO_MODE=false` |
 
 API routes available now:
 
@@ -78,8 +80,10 @@ API routes available now:
 - `POST /api/provision` — saves a request such as `REQ-2026-001` in MongoDB. Demo status moves from `REQUESTED` to `PROVISIONING` to `AVAILABLE`.
 - `GET /api/provision`
 - `GET /api/provision/:id`
+- `GET /api/aws/vpcs` — authenticated. Lists VPCs in `AWS_REGION`.
+- `GET /api/aws/subnets?vpcId=` — authenticated. Lists subnets in the selected VPC.
 
-Products and provisioning requests are stored in MongoDB. Demo provisioning still does not create AWS resources. The demo session stored in the browser is not an AWS credential. Restarting the API keeps the saved requests.
+Products and provisioning requests are stored in MongoDB. With `DEMO_MODE=false`, confirming a provision calls AWS Service Catalog and can create billable resources. The browser session token is not an AWS credential. Restarting the API keeps the saved requests.
 
 ## Prerequisites
 
@@ -110,7 +114,7 @@ cd backend
 npm install
 ```
 
-The AWS SDK is intentionally not installed.
+Backend AWS packages are `@aws-sdk/client-service-catalog` and `@aws-sdk/client-ec2`. Do not add AWS credentials to the frontend.
 
 ## Run
 
@@ -160,8 +164,8 @@ copy frontend\.env.example frontend\.env
 ## Security
 
 - No AWS access keys, secret keys, or session tokens in the frontend.
-- Backend credentials, when AWS mode is added, belong in environment variables only.
-- `.env.example` contains names and empty placeholders, not secrets.
+- On EC2, leave `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` unset. The SDK uses the instance role.
+- `.env.example` contains names and placeholders, not secrets. `.env` is gitignored.
 
 ## Project layout
 
@@ -180,8 +184,13 @@ frontend/src
 backend/src
   config/        MongoDB connection
   models/        User, Product, and ProvisionRequest
-  routes/        auth, products, dashboard, provision
+  routes/        auth, products, dashboard, provision, network
   controllers/   request handlers
-  services/      database services, later AWS Service Catalog
+  services/      MongoDB, Service Catalog, and VPC/subnet lookup
   server.js
+  ecosystem.config.js
 ```
+
+## Production
+
+See [DEPLOYMENT.md](DEPLOYMENT.md). Intended layout: Amplify hosts the frontend, a small Linux EC2 instance in `eu-north-1` runs this API behind Caddy, MongoDB Atlas stores users and requests, and the EC2 instance role calls Service Catalog. Do not put access keys on the instance.

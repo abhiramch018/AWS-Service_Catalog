@@ -18,7 +18,12 @@ import {
 } from '@mui/material';
 import { ArrowBack } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
-import { ENVIRONMENTS, INITIAL_PROVISION_FORM } from '../data/provisionOptions';
+import {
+  INITIAL_PROVISION_FORM,
+  REGION_CODE,
+  REGION_LABEL,
+  productProfile,
+} from '../data/provisionOptions';
 import { fetchProduct } from '../services/catalogService';
 import { fetchSubnets, fetchVpcs } from '../services/networkService';
 import { submitProvisionRequest } from '../services/provisionService';
@@ -81,6 +86,22 @@ export default function ProvisionProductPage() {
   }, [productId]);
 
   useEffect(() => {
+    setForm(INITIAL_PROVISION_FORM);
+    setReviewing(false);
+    setSubmitError('');
+  }, [productId]);
+
+  const profile = productProfile(product);
+  const fields = profile?.fields || [];
+  const needsVpc = fields.includes('vpc');
+
+  useEffect(() => {
+    if (!needsVpc) {
+      setVpcs([]);
+      setVpcState('idle');
+      return undefined;
+    }
+
     let active = true;
 
     async function loadNetworks() {
@@ -105,7 +126,7 @@ export default function ProvisionProductPage() {
     return () => {
       active = false;
     };
-  }, [productId]);
+  }, [product?.id, needsVpc]);
 
   useEffect(() => {
     if (!form.vpc) {
@@ -141,12 +162,41 @@ export default function ProvisionProductPage() {
   }, [form.vpc]);
 
   function reviewConfiguration() {
-    if (!form.instanceType.trim() || !form.region.trim() || !form.subnet.trim() || !form.vpc.trim()) {
-      setSubmitError('Instance type, region, subnet, and VPC are required.');
+    if (!profile) {
+      setSubmitError('This product cannot be provisioned from the portal.');
+      return;
+    }
+    if (fields.includes('instanceType') && !form.instanceType.trim()) {
+      setSubmitError('Instance type is required.');
+      return;
+    }
+    if (fields.includes('vpc') && (!form.region.trim() || !form.subnet.trim() || !form.vpc.trim())) {
+      setSubmitError('Region, subnet, and VPC are required.');
       return;
     }
     setSubmitError('');
     setReviewing(true);
+  }
+
+  function provisionPayload() {
+    const payload = {
+      productId: product.id,
+      environment: form.environment,
+      requestedBy: user?.name || 'Portal user',
+    };
+    if (fields.includes('instanceType')) {
+      payload.instanceType = form.instanceType;
+    }
+    if (fields.includes('region')) {
+      payload.region = form.region;
+    }
+    if (fields.includes('vpc')) {
+      payload.vpc = form.vpc;
+    }
+    if (fields.includes('subnet')) {
+      payload.subnet = form.subnet;
+    }
+    return payload;
   }
 
   function updateField(field) {
@@ -166,11 +216,7 @@ export default function ProvisionProductPage() {
     setSubmitError('');
 
     try {
-      const data = await submitProvisionRequest({
-        productId: product.id,
-        ...form,
-        requestedBy: user?.name || 'Portal user',
-      });
+      const data = await submitProvisionRequest(provisionPayload());
       setConfirmOpen(false);
       navigate(`/history/${data.requestId}`);
     } catch (requestError) {
@@ -199,11 +245,11 @@ export default function ProvisionProductPage() {
   const summary = [
     ['Product', product.name],
     ['Environment', form.environment],
-    ['Instance type', form.instanceType],
-    ['Region', form.region],
-    ['VPC', vpcLabel],
-    ['Subnet', subnetLabel],
-  ];
+    fields.includes('instanceType') ? ['Instance type', form.instanceType] : null,
+    fields.includes('region') ? ['Region', form.region === REGION_CODE ? REGION_LABEL : form.region] : null,
+    fields.includes('vpc') ? ['VPC', vpcLabel] : null,
+    fields.includes('subnet') ? ['Subnet', subnetLabel] : null,
+  ].filter(Boolean);
 
   return (
     <Stack spacing={2}>
@@ -226,71 +272,92 @@ export default function ProvisionProductPage() {
       <Paper sx={{ p: 3 }}>
           <Stack spacing={2.5}>
             <TextField label="Product" value={product.name} fullWidth slotProps={{ input: { readOnly: true } }} />
-            <TextField select label="Environment" value={form.environment} onChange={updateField('environment')} fullWidth>
-              {ENVIRONMENTS.map((value) => (
-                <MenuItem key={value} value={value}>
-                  {value}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField label="Instance type" value={form.instanceType} onChange={updateField('instanceType')} required fullWidth />
-            <TextField label="Region" value={form.region} fullWidth slotProps={{ input: { readOnly: true } }} />
-            <TextField
-              select
-              label="VPC"
-              value={form.vpc}
-              onChange={updateField('vpc')}
-              disabled={vpcState !== 'ready'}
-              required
-              fullWidth
-              helperText={
-                vpcState === 'loading'
-                  ? 'Loading VPCs…'
-                  : vpcState === 'empty'
-                    ? 'No VPCs found.'
-                    : vpcState === 'error'
-                      ? 'Failed to load VPCs.'
-                      : ' '
-              }
-            >
-              <MenuItem value="" disabled>
-                Select VPC
-              </MenuItem>
-              {vpcs.map((vpc) => (
-                <MenuItem key={vpc.id} value={vpc.id}>
-                  {vpc.label}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              select
-              label="Subnet"
-              value={form.subnet}
-              onChange={updateField('subnet')}
-              disabled={!form.vpc || subnetState !== 'ready'}
-              required
-              fullWidth
-              helperText={
-                !form.vpc
-                  ? 'Select a VPC first.'
-                  : subnetState === 'loading'
-                    ? 'Loading subnets…'
-                    : subnetState === 'empty'
-                      ? 'No subnets found.'
-                      : subnetState === 'error'
-                        ? 'Failed to load subnets.'
+            {profile && (
+              <TextField select label="Environment" value={form.environment} onChange={updateField('environment')} fullWidth>
+                {profile.environments.map((value) => (
+                  <MenuItem key={value} value={value}>
+                    {value}
+                  </MenuItem>
+                ))}
+              </TextField>
+            )}
+            {fields.includes('instanceType') && (
+              <TextField select label="Instance type" value={form.instanceType} onChange={updateField('instanceType')} required fullWidth>
+                {profile.instanceTypes.map((value) => (
+                  <MenuItem key={value} value={value}>
+                    {value}
+                  </MenuItem>
+                ))}
+              </TextField>
+            )}
+            {fields.includes('region') && (
+              <TextField select label="Region" value={form.region} fullWidth>
+                <MenuItem value={REGION_CODE}>{REGION_LABEL}</MenuItem>
+              </TextField>
+            )}
+            {fields.includes('vpc') && (
+              <TextField
+                select
+                label="VPC"
+                value={form.vpc}
+                onChange={updateField('vpc')}
+                disabled={vpcState !== 'ready'}
+                required
+                fullWidth
+                helperText={
+                  vpcState === 'loading'
+                    ? 'Loading VPCs…'
+                    : vpcState === 'empty'
+                      ? 'No VPCs found.'
+                      : vpcState === 'error'
+                        ? 'Failed to load VPCs.'
                         : ' '
-              }
-            >
-              <MenuItem value="" disabled>
-                Select Subnet
-              </MenuItem>
-              {subnets.map((subnet) => (
-                <MenuItem key={subnet.id} value={subnet.id}>
-                  {subnet.label}
+                }
+              >
+                <MenuItem value="" disabled>
+                  Select VPC
                 </MenuItem>
-              ))}
-            </TextField>
+                {vpcs.map((vpc) => (
+                  <MenuItem key={vpc.id} value={vpc.id}>
+                    {vpc.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+            )}
+            {fields.includes('subnet') && (
+              <TextField
+                select
+                label="Subnet"
+                value={form.subnet}
+                onChange={updateField('subnet')}
+                disabled={!form.vpc || subnetState !== 'ready'}
+                required
+                fullWidth
+                helperText={
+                  !form.vpc
+                    ? 'Select a VPC first.'
+                    : subnetState === 'loading'
+                      ? 'Loading subnets…'
+                      : subnetState === 'empty'
+                        ? 'No subnets found.'
+                        : subnetState === 'error'
+                          ? 'Failed to load subnets.'
+                          : ' '
+                }
+              >
+                <MenuItem value="" disabled>
+                  Select Subnet
+                </MenuItem>
+                {subnets.map((subnet) => (
+                  <MenuItem key={subnet.id} value={subnet.id}>
+                    {subnet.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+            )}
+            {!profile && (
+              <Alert severity="error">This product cannot be provisioned from the portal.</Alert>
+            )}
 
             {reviewing && (
               <Box>
