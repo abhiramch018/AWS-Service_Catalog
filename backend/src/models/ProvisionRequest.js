@@ -16,6 +16,7 @@ const provisionRequestSchema = new mongoose.Schema(
     region: { type: String, default: '' },
     subnet: { type: String, default: '' },
     vpc: { type: String, default: '' },
+    userId: { type: String, index: true },
     requestedBy: { type: String, required: true },
     requestedAt: { type: Date, required: true },
     message: { type: String, required: true },

@@ -26,6 +26,7 @@ async function requireAuth(req, res, next) {
     }
 
     req.user = {
+      id: String(user._id),
       name: user.name,
       email: user.email,
       role: user.role,

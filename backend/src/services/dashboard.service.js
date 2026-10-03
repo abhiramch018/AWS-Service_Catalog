@@ -2,9 +2,9 @@ const productService = require('./product.service');
 const provisionService = require('./provision.service');
 const { portalMode } = require('../config/aws');
 
-async function getSummary() {
+async function getSummary(actor = {}) {
   const products = await productService.list();
-  const requests = await provisionService.list();
+  const requests = await provisionService.list(actor.id);
 
   return {
     mode: portalMode(),

@@ -105,7 +105,7 @@ export default function ProvisioningHistoryPage() {
           <Typography color="text.secondary">Loading history…</Typography>
         </Stack>
       ) : requests.length === 0 ? (
-        <Alert severity="info">No provisioning requests yet. Submit one from the product catalog.</Alert>
+        <Alert severity="info">No provisioning requests yet.</Alert>
       ) : (
         <>
           <Stack spacing={2} sx={{ display: { md: 'none' } }}>
