@@ -1,6 +1,13 @@
 const Product = require('../models/Product');
 const { portalMode } = require('../config/aws');
 const catalogAws = require('./catalogAws.service');
+const productRequestService = require('./productRequest.service');
+const {
+  isRestrictedProduct,
+  portalProduct,
+  requestableById,
+  requestableProducts,
+} = require('../config/requestableProducts');
 
 function toProduct(document) {
   if (!document) {
@@ -11,7 +18,7 @@ function toProduct(document) {
   return product;
 }
 
-async function list() {
+async function catalogProducts() {
   if (portalMode() === 'aws') {
     return catalogAws.listProducts();
   }
@@ -20,9 +27,70 @@ async function list() {
   return products.map(toProduct);
 }
 
-async function getById(id) {
+async function visibleRestricted(userId, catalog) {
+  const approved = [];
+  for (const item of requestableProducts()) {
+    const allowed = await productRequestService.hasApproval(userId, item.id);
+    if (!allowed) {
+      continue;
+    }
+    const remote = catalog.find(
+      (product) => product.id === item.id || product.name.toLowerCase() === item.name.toLowerCase(),
+    );
+    approved.push(remote || portalProduct(item));
+  }
+  return approved;
+}
+
+async function list(userId) {
+  const catalog = await catalogProducts();
+  const open = catalog.filter((product) => !isRestrictedProduct(product));
+  if (!userId) {
+    return open;
+  }
+  const restricted = await visibleRestricted(userId, catalog);
+  return [...open, ...restricted];
+}
+
+function accessError() {
+  const error = new Error('You do not have access to this product.');
+  error.status = 403;
+  return error;
+}
+
+async function getById(id, userId) {
+  const configured = requestableById(id);
+  if (configured) {
+    const allowed = await productRequestService.hasApproval(userId, configured.id);
+    if (!allowed) {
+      throw accessError();
+    }
+  }
+
+  const remote = portalMode() === 'aws' ? await catalogAws.getProduct(id) : null;
+  const requestable =
+    configured ||
+    requestableProducts().find(
+      (item) => item.name.toLowerCase() === String(remote?.name || '').toLowerCase(),
+    ) ||
+    null;
+
+  if (requestable && !configured) {
+    const allowed = await productRequestService.hasApproval(userId, requestable.id);
+    if (!allowed) {
+      throw accessError();
+    }
+  }
+
+  if (requestable) {
+    if (remote && isRestrictedProduct(remote)) {
+      return remote;
+    }
+    return portalProduct(requestable);
+  }
+
   if (portalMode() === 'aws') {
-    return catalogAws.getProduct(id);
+    return remote;
   }
 
   const product = await Product.findOne({ id }).lean();

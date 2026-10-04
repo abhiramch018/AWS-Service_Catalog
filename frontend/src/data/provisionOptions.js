@@ -1,5 +1,6 @@
 export const EC2_PRODUCT_ID = 'prod-jrgcrbhgoxw24';
 export const S3_PRODUCT_ID = 'prod-ctdwlxj3ybi5g';
+export const RDS_PRODUCT_ID = 'prod-rds-postgresql';
 
 export const REGION_CODE = 'eu-north-1';
 export const REGION_LABEL = 'Europe (Stockholm)';
@@ -17,6 +18,14 @@ export const PRODUCT_PROFILES = {
     key: 's3',
     id: S3_PRODUCT_ID,
     name: 'S3 Storage',
+    fields: ['environment'],
+    environments: ['Development', 'Testing', 'Production'],
+    instanceTypes: [],
+  },
+  rds: {
+    key: 'rds',
+    id: RDS_PRODUCT_ID,
+    name: 'RDS PostgreSQL',
     fields: ['environment'],
     environments: ['Development', 'Testing', 'Production'],
     instanceTypes: [],
@@ -39,6 +48,9 @@ export function productProfile(product) {
   }
   if (id === PRODUCT_PROFILES.s3.id || name === 's3 storage') {
     return PRODUCT_PROFILES.s3;
+  }
+  if (id === PRODUCT_PROFILES.rds.id || name === 'rds postgresql') {
+    return PRODUCT_PROFILES.rds;
   }
   return null;
 }

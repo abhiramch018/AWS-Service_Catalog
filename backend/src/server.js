@@ -11,6 +11,7 @@ const dashboardRoutes = require('./routes/dashboard.routes');
 const provisionRoutes = require('./routes/provision.routes');
 const networkRoutes = require('./routes/network.routes');
 const adminRoutes = require('./routes/admin.routes');
+const productRequestRoutes = require('./routes/productRequest.routes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -54,6 +55,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/provision', provisionRoutes);
 app.use('/api/aws', networkRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/product-requests', productRequestRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found.' });

@@ -21,6 +21,7 @@ import {
   GroupOutlined,
   PendingActionsOutlined,
 } from '@mui/icons-material';
+import AdminProductRequests from '../components/AdminProductRequests';
 import StatusChip from '../components/StatusChip';
 import SummaryCard from '../components/SummaryCard';
 import { fetchAdminDashboard } from '../services/adminService';
@@ -191,6 +192,8 @@ export default function AdminDashboardPage() {
               </Table>
             </TableContainer>
           )}
+
+          <AdminProductRequests />
         </>
       )}
     </Stack>

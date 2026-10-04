@@ -5,6 +5,9 @@ const COLORS = {
   PROVISIONING: 'info',
   AVAILABLE: 'success',
   FAILED: 'error',
+  PENDING: 'warning',
+  APPROVED: 'success',
+  REJECTED: 'error',
 };
 
 export default function StatusChip({ status }) {

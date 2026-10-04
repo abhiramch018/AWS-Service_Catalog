@@ -13,6 +13,7 @@ import ProvisioningStatusPage from './pages/ProvisioningStatusPage';
 import ProvisionProductPage from './pages/ProvisionProductPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import ProductRequestPage from './pages/ProductRequestPage';
 
 export default function App() {
   return (
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/products" element={<ProductsPage />} />
+          <Route path="/product-requests" element={<ProductRequestPage />} />
           <Route path="/products/:id" element={<ProductDetailsPage />} />
           <Route path="/provisioning" element={<ProvisioningPage />} />
           <Route path="/provisioning/:productId" element={<ProvisionProductPage />} />

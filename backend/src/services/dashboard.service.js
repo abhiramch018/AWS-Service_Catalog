@@ -3,7 +3,7 @@ const provisionService = require('./provision.service');
 const { portalMode } = require('../config/aws');
 
 async function getSummary(actor = {}) {
-  const products = await productService.list();
+  const products = await productService.list(actor.id);
   const requests = await provisionService.list(actor.id);
 
   return {

@@ -27,6 +27,7 @@ import {
   HistoryOutlined,
   Inventory2Outlined,
   Logout,
+  PostAddOutlined,
   Menu as MenuIcon,
   SettingsOutlined,
 } from '@mui/icons-material';
@@ -38,6 +39,7 @@ const COLLAPSED_WIDTH = 76;
 const USER_NAV_ITEMS = [
   { label: 'Dashboard', path: '/dashboard', icon: DashboardOutlined },
   { label: 'Products', path: '/products', icon: Inventory2Outlined },
+  { label: 'Request a Product', path: '/product-requests', icon: PostAddOutlined },
   { label: 'Provisioning', path: '/provisioning', icon: CloudQueueOutlined },
   { label: 'Provisioning History', path: '/history', icon: HistoryOutlined },
   { label: 'Settings', path: '/settings', icon: SettingsOutlined },

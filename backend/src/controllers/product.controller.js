@@ -2,7 +2,7 @@ const productService = require('../services/product.service');
 
 async function list(req, res) {
   try {
-    const products = await productService.list();
+    const products = await productService.list(req.user.id);
     res.json(products);
   } catch (error) {
     res.status(500).json({ message: 'Products could not be loaded.' });
@@ -22,13 +22,15 @@ async function create(req, res) {
 
 async function getById(req, res) {
   try {
-    const product = await productService.getById(req.params.id);
+    const product = await productService.getById(req.params.id, req.user.id);
     if (!product) {
       return res.status(404).json({ message: 'Product not found.' });
     }
     return res.json(product);
   } catch (error) {
-    return res.status(500).json({ message: 'This product could not be loaded.' });
+    return res.status(error.status || 500).json({
+      message: error.message || 'This product could not be loaded.',
+    });
   }
 }
 

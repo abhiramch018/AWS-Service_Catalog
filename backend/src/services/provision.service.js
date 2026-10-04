@@ -94,9 +94,9 @@ async function normalizeRequest(product, input = {}) {
   const environment = requiredText(input.environment, 'Environment');
   if (!profile.environments.includes(environment)) {
     throw httpError(
-      profile.key === 's3'
-        ? 'Select Development, Testing, or Production.'
-        : 'Select Development, Test, or Production.',
+      profile.key === 'ec2'
+        ? 'Select Development, Test, or Production.'
+        : 'Select Development, Testing, or Production.',
       400,
     );
   }
@@ -136,7 +136,7 @@ async function create(input = {}, actor = {}) {
     throw httpError('Authentication is required.', 401);
   }
 
-  const product = await productService.getById(input.productId);
+  const product = await productService.getById(input.productId, actor.id);
   if (!product) {
     const error = new Error('Product not found.');
     error.status = 404;

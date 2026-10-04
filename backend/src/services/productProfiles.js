@@ -1,5 +1,6 @@
 const EC2_PRODUCT_ID = 'prod-jrgcrbhgoxw24';
 const S3_PRODUCT_ID = 'prod-ctdwlxj3ybi5g';
+const RDS_PRODUCT_ID = process.env.RDS_POSTGRESQL_PRODUCT_ID || 'prod-rds-postgresql';
 
 const PROFILES = {
   ec2: {
@@ -18,6 +19,14 @@ const PROFILES = {
     environments: ['Development', 'Testing', 'Production'],
     instanceTypes: [],
   },
+  rds: {
+    key: 'rds',
+    id: RDS_PRODUCT_ID,
+    name: 'RDS PostgreSQL',
+    fields: ['environment'],
+    environments: ['Development', 'Testing', 'Production'],
+    instanceTypes: [],
+  },
 };
 
 function profileFor(product = {}) {
@@ -29,12 +38,15 @@ function profileFor(product = {}) {
   if (id === PROFILES.s3.id || name === 's3 storage') {
     return PROFILES.s3;
   }
+  if (id === PROFILES.rds.id || name === 'rds postgresql') {
+    return PROFILES.rds;
+  }
   return null;
 }
 
 function catalogEnvironment(profile, value) {
   const text = String(value || '').trim();
-  if (profile?.key === 's3') {
+  if (profile?.key === 's3' || profile?.key === 'rds') {
     return profile.environments.find((item) => item.toLowerCase() === text.toLowerCase()) || '';
   }
 
@@ -47,7 +59,7 @@ function catalogEnvironment(profile, value) {
 }
 
 function environmentError(profile) {
-  if (profile?.key === 's3') {
+  if (profile?.key === 's3' || profile?.key === 'rds') {
     return 'Select Development, Testing, or Production.';
   }
   return 'Choose Development or Test. This product does not accept Production.';
